@@ -1,0 +1,9 @@
+name 0f db: access_control_management
+port no: 3307 - change the port at config.php
+
+# create dummies
+http://localhost/acrapi/migration/migrate.php
+http://localhost/acrapi/dummy/create.php
+
+# rollback
+http://localhost/acrapi/migration/rollback.php
