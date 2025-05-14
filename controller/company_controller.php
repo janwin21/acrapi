@@ -1,6 +1,7 @@
 <?php
 	require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/error/http_error.php');
     require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/handler/try_catch_handler.php');
+    require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/middleware/authentication.php');
 
     class CompanyController {
         
@@ -13,6 +14,9 @@
         // CREATE
         public function add($data, $query_data = null) {
             return handle(function() use ($data, $query_data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $user_id = $data['user_id'];
                 $name = $data['name'];
                 $industry = $data['industry'];
@@ -30,6 +34,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 201,
+                            "payload" => $my_user,
                             "message" => "New company successfully created."
                         ]
                     ];
@@ -42,6 +47,9 @@
         // RETRIEVE
         public function get_all() {
             return handle(function() {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "SELECT * FROM companies";
                 $result = mysqli_query($this->conn,$query);
                 $companies = array();
@@ -54,6 +62,7 @@
                     "status" => "success",
                     "data" => [
                         "code" => 200,
+                        "payload" => $my_user,
                         "companies" => $companies
                     ]
                 ];
@@ -63,6 +72,9 @@
         // RETRIEVE
         public function get_user_companies($user_id) {
             return handle(function() use ($user_id) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+                
                 $query = "SELECT * FROM companies WHERE user_id = $user_id";
                 $result = mysqli_query($this->conn,$query);
                 $companies = array();
@@ -71,16 +83,17 @@
                     $companies[] = $row;
                 }
 
-                if($user_id) {
+                if(count($companies) > 0) {
                     return [
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "companies" => $companies
                         ]
                     ];
                 } else {
-                    throw new HttpError("400 Bad Request");
+                    throw new HttpError("User does not have company.");
                 }
             });
         }
@@ -88,6 +101,9 @@
         // RETRIEVE
         public function get_users($company_id) {
             return handle(function() use ($company_id) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "
                     SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
                     FROM users u
@@ -102,16 +118,17 @@
                     $users[] = $row;
                 }
 
-                if($company_id) {
+                if(count($users) > 0) {
                     return [
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "users" => $users
                         ]
                     ];
                 } else {
-                    throw new HttpError("400 Bad Request");
+                    throw new HttpError("No users available.");
                 }
             });
         }
@@ -119,6 +136,9 @@
         // UPDATE
         public function update($company_id, $data) {
             return handle(function() use ($company_id, $data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $name = $data['name'];
                 $industry = $data['industry'];
                 $location = $data['location'];
@@ -138,14 +158,23 @@
                 ";
                 $result = mysqli_query($this->conn,$query);
 
+                var_dump($result);
+
                 if($result) {
-                    return [
-                        "status" => "success",
-                        "data" => [
-                            "code" => 200,
-                            "message" => "Company successfully updated."
-                        ]
-                    ];
+                    $affected = mysqli_affected_rows($this->conn);
+
+                    if ($affected > 0) {
+                        return [
+                            "status" => "success",
+                            "data" => [
+                                "code" => 200,
+                                "payload" => $my_user,
+                                "message" => "Company successfully updated."
+                            ]
+                        ];
+                    } else {
+                        throw new HttpError("No affected rows detected");
+                    }
                 } else {
                     throw new HttpError("400 Bad Request");
                 }

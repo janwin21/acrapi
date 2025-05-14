@@ -1,6 +1,14 @@
 <?php
+    require __DIR__ . '/../vendor/autoload.php';
 	require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/error/http_error.php');
     require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/handler/try_catch_handler.php');
+    require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/validation/validator.php');
+    require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/middleware/authentication.php');
+
+    use Firebase\JWT\JWT;
+
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+    $dotenv->load();
 
     class UserController {
 
@@ -17,21 +25,30 @@
                 $last_name = $data['last_name'];
                 $email = $data['email'];
                 $password = $data['password'];
+                $confirm_password = $data['confirm_password'];
+
+                Validator::validate_email($email);
+                Validator::validate_password($password, $confirm_password);
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 
-                $query = "INSERT INTO users (first_name, last_name, email, password) VALUES ('$first_name', '$last_name', '$email', '$password')";
-                $result = mysqli_query($this->conn,$query);
+                $query = "INSERT INTO users (first_name, last_name, email, password) VALUES ('$first_name', '$last_name', '$email', '$hashed_password')";
+                mysqli_query($this->conn,$query);
+                
+                // Encode the payload
+                $jwt = JWT::encode([
+                    "first_name" => $first_name,
+                    "last_name" => $last_name,
+                    "email" => $email,
+                ], $_ENV['JWT_SECRET_TOKEN_KEY'], 'HS256');
                 	
-                if($result) {
-                    return [
-                        "status" => "success",
-                        "data" => [
-                            "code" => 201,
-                            "message" => "New user registered successfully."
-                        ]
-                    ];
-                } else {
-                    throw new HttpError("401 Unauthorized");
-                }
+                return [
+                    "status" => "success",
+                    "data" => [
+                        "code" => 201,
+                        "payload" => $jwt,
+                        "message" => "New user registered successfully."
+                    ]
+                ];
             });
         }
 
@@ -40,28 +57,39 @@
             return handle(function() use ($data) { 
                 $email = $data['email'];
                 $input_password = $data['password'];
-                
-                $query = "SELECT password FROM users WHERE email LIKE '$email'";
-                $result = mysqli_query($this->conn,$query);
-                $password = mysqli_fetch_assoc($result);
 
-                if($input_password === $password['password']) {
-                    return [
-                        "status" => "success",
-                        "data" => [
-                            "code" => 200,
-                            "message" => "User login successfully."
-                        ]
-                    ];
-                } else {
-                    throw new HttpError("401 Unauthorized");
-                }
+                Validator::validate_email($email);
+                
+                $query = "SELECT id, first_name, last_name, password, email FROM users WHERE email LIKE '$email'";
+                $result = mysqli_query($this->conn,$query);
+                $user = mysqli_fetch_assoc($result);
+
+                Validator::validate_login_password($input_password, $user);
+
+                // Encode the payload
+                $jwt = JWT::encode([
+                    "first_name" => $user["first_name"],
+                    "last_name" => $user["last_name"],
+                    "email" => $user["email"],
+                ], $_ENV['JWT_SECRET_TOKEN_KEY'], 'HS256');
+                
+                return [
+                    "status" => "success",
+                    "data" => [
+                        "code" => 200,
+                        "message" => "User login successfully.",
+                        "token" => $jwt
+                    ]
+                ];
             });
         }
 
         // RETRIEVE
         public function get_all() {
             return handle(function() {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "SELECT id, first_name, last_name, email, created_at, updated_at FROM users";
                 $result = mysqli_query($this->conn,$query);
                 $users = array();
@@ -74,6 +102,7 @@
                     "status" => "success",
                     "data" => [
                         "code" => 200,
+                        "payload" => $my_user,
                         "users" => $users
                     ]
                 ];
@@ -83,6 +112,9 @@
         // RETRIEVE
         public function get_all_with_companies() {
             return handle(function() {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "
                     SELECT u.id, u.first_name, u.last_name, u.email, c.name AS 'company_name', c.industry, c.location, c.founded_year
                     FROM users u
@@ -99,6 +131,7 @@
                     "status" => "success",
                     "data" => [
                         "code" => 200,
+                        "payload" => $my_user,
                         "users" => $users
                     ]
                 ];
@@ -108,6 +141,9 @@
         // RETRIEVE
         public function get_all_with_roles() {
             return handle(function() {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "
                     SELECT u.id, u.first_name, u.last_name, u.email, GROUP_CONCAT(r.name SEPARATOR ', ') AS 'roles', GROUP_CONCAT((
                         SELECT GROUP_CONCAT(p.name SEPARATOR ', ')
@@ -133,6 +169,7 @@
                     "status" => "success",
                     "data" => [
                         "code" => 200,
+                        "payload" => $my_user,
                         "users" => $users
                     ]
                 ];
@@ -142,6 +179,9 @@
         // RETRIEVE
         public function get_with_roles($user_id) {
             return handle(function() use ($user_id) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "
                     SELECT u.id, u.first_name, u.last_name, u.email, GROUP_CONCAT(r.name SEPARATOR ', ') AS 'roles', GROUP_CONCAT((
                         SELECT GROUP_CONCAT(p.name SEPARATOR ', ')
@@ -160,11 +200,12 @@
                 $result = mysqli_query($this->conn,$query);
                 $user = mysqli_fetch_assoc($result);
 
-                if($user_id) {
+                if($user) {
                     return [
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "user" => $user
                         ]
                     ];
@@ -177,6 +218,9 @@
         // RETRIEVE
         public function is_authorize($user_id) {
             return handle(function() use ($user_id) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query_data = [
                     "role" => $_GET["role"] ?? null,
                     "action" => $_GET["action"] ?? null
@@ -232,6 +276,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "result" => $is_authorized["result"]
                         ]
                     ];
@@ -244,9 +289,14 @@
         // UPDATE
         public function update($user_id, $data) {
             return handle(function() use ($user_id, $data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $first_name = $data['first_name'];
                 $last_name = $data['last_name'];
                 $email = $data['email'];
+
+                Validator::validate_email($email);
                 
                 $query = "
                     UPDATE users
@@ -264,6 +314,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "User successfully updated."
                         ]
                     ];
@@ -276,6 +327,9 @@
         // UPDATED
         public function change_role($company_id, $user_id, $role_id, $data) {
             return handle(function() use ($company_id, $user_id, $role_id, $data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+                
                 $input_role_id = $data['role_id'];
                 
                 $query = "
@@ -294,6 +348,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "User's role successfully changed."
                         ]
                     ];

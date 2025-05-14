@@ -1,11 +1,12 @@
 <?php
-	function sendRequest($url,$method='GET',$data=[],$query_data=[])
+	function sendRequest($url,$method='GET',$data=[],$query_data=[],$headers=[])
 	{
 		$queryParams = http_build_query($query_data);
 
 		$ch = curl_init();
 		curl_setopt($ch,CURLOPT_URL,$url."?".$queryParams);
 		curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 		
 		switch ($method)
 		{

@@ -1,4 +1,5 @@
 <?php
+	require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/cors.php');
 	require_once($_SERVER['DOCUMENT_ROOT'].'/acrapi/curl_helper.php');
 	$restAPIBaseURL = "http://localhost/acrapi";
 	

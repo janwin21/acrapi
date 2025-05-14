@@ -13,6 +13,9 @@
         // CREATE
         public function add($data) {
             return handle(function() use ($data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $created_by = $data['created_by'];
                 $name = $data['name'];
                 $description = $data['description'];
@@ -25,6 +28,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "New permission successfully created."
                         ]
                     ];
@@ -37,6 +41,9 @@
         // CREATE | ASSIGN PERMISSION
         public function assign_permission($data) {
             return handle(function() use ($data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $role_id = $data['role_id'];
                 $permission_id = $data['permission_id'];
 
@@ -48,6 +55,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "Assigning permission successfully created."
                         ]
                     ];
@@ -60,6 +68,9 @@
         // RETRIEVE
         public function get_all() {
             return handle(function() {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "SELECT * FROM permissions";
                 $result = mysqli_query($this->conn,$query);
                 $roles = array();
@@ -72,6 +83,7 @@
                     "status" => "success",
                     "data" => [
                         "code" => 200,
+                        "payload" => $my_user,
                         "roles" => $roles
                     ]
                 ];
@@ -81,6 +93,9 @@
         // UPDATE
         public function update($permission_id, $created_by, $data) {
             return handle(function() use ($permission_id, $created_by, $data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $name = $data['name'];
                 $description = $data['description'];
                 
@@ -100,6 +115,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "Permission successfully updated."
                         ]
                     ];
@@ -112,6 +128,9 @@
         // DELETE
         public function delete($role, $permission) {
             return handle(function() use ($role, $permission) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "
                     DELETE FROM permission_groups
                     WHERE
@@ -125,6 +144,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "Permission successfully deleted."
                         ]
                     ];

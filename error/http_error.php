@@ -16,6 +16,16 @@
             ];
         }
 
+        public static function get_error_custom_data($message) {
+            return [
+                "status" => "error",
+                "data" => [
+                    "code" => 401,
+                    "message" => $message
+                ]
+            ];
+        }
+
     }
 
 ?>

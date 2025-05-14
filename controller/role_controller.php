@@ -13,6 +13,9 @@
         // CREATE
         public function add($data, $query_data = null) {
             return handle(function() use ($data, $query_data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $created_by = $data['created_by'];
                 $name = $data['name'];
                 $description = $data['description'];
@@ -25,6 +28,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "New role successfully created."
                         ]
                     ];
@@ -37,6 +41,9 @@
         // CREATE | ASSIGN ROLE
         public function assign_role($data) {
             return handle(function() use ($data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $company_id = $data['company_id'];
                 $user_id = $data['user_id'];
                 $role_id = $data['role_id'];
@@ -49,6 +56,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "Assigning role successfully created."
                         ]
                     ];
@@ -61,6 +69,9 @@
         // RETRIEVE
         public function get_all() {
             return handle(function() {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "
                     SELECT r.id, r.name, GROUP_CONCAT(p.name SEPARATOR ', ') AS permissions
                     FROM roles r
@@ -79,6 +90,7 @@
                     "status" => "success",
                     "data" => [
                         "code" => 200,
+                        "payload" => $my_user,
                         "roles" => $roles
                     ]
                 ];
@@ -88,6 +100,9 @@
         // RETRIEVE
         public function get_all_created_by($created_by) {
             return handle(function() use ($created_by) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "
                     SELECT r.name, GROUP_CONCAT(p.name SEPARATOR ', ') AS permissions
                     FROM roles r
@@ -108,6 +123,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "roles" => $roles
                         ]
                     ];
@@ -120,6 +136,9 @@
         // UPDATE
         public function update($role_id, $created_by, $data) {
             return handle(function() use ($role_id, $created_by, $data) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $name = $data['name'];
                 $description = $data['description'];
                 
@@ -139,6 +158,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "Role successfully updated."
                         ]
                     ];
@@ -151,6 +171,9 @@
         // DELETE
         public function delete($company, $user, $role) {
             return handle(function() use ($company, $user, $role) {
+                $header = getallheaders();
+                $my_user = authenticateRequest($header);
+
                 $query = "
                     DELETE FROM role_groups
                     WHERE
@@ -165,6 +188,7 @@
                         "status" => "success",
                         "data" => [
                             "code" => 200,
+                            "payload" => $my_user,
                             "message" => "Role successfully deleted."
                         ]
                     ];

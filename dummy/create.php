@@ -9,11 +9,11 @@
 
     // users
     $users = [
-        new User(null, 'John', 'Smith', 'johnsmaith@email.com', 'password'),
-        new User(null, 'Jane', 'Red', 'janered@email.com', 'password'),
-        new User(null, 'Lukas', 'Prec', 'luke@email.com', 'password'),
-        new User(null, 'Amy', 'Sky', 'sky@email.com', 'password'),
-        new User(null, 'Jenny', 'Arcland', 'jenjen@email.com', 'password')
+        new User(null, 'John', 'Smith', 'johnsmaith@email.com', password_hash("mypassword", PASSWORD_DEFAULT)),
+        new User(null, 'Jane', 'Red', 'janered@email.com', password_hash("mypassword", PASSWORD_DEFAULT)),
+        new User(null, 'Lukas', 'Prec', 'luke@email.com', password_hash("mypassword", PASSWORD_DEFAULT)),
+        new User(null, 'Amy', 'Sky', 'sky@email.com', password_hash("mypassword", PASSWORD_DEFAULT)),
+        new User(null, 'Jenny', 'Arcland', 'jenjen@email.com', password_hash("mypassword", PASSWORD_DEFAULT))
     ];
 
     // roles
