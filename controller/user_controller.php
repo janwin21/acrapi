@@ -33,19 +33,11 @@
                 
                 $query = "INSERT INTO users (first_name, last_name, email, password) VALUES ('$first_name', '$last_name', '$email', '$hashed_password')";
                 mysqli_query($this->conn,$query);
-                
-                // Encode the payload
-                $jwt = JWT::encode([
-                    "first_name" => $first_name,
-                    "last_name" => $last_name,
-                    "email" => $email,
-                ], $_ENV['JWT_SECRET_TOKEN_KEY'], 'HS256');
                 	
                 return [
                     "status" => "success",
                     "data" => [
                         "code" => 201,
-                        "payload" => $jwt,
                         "message" => "New user registered successfully."
                     ]
                 ];
@@ -60,7 +52,24 @@
 
                 Validator::validate_email($email);
                 
-                $query = "SELECT id, first_name, last_name, password, email FROM users WHERE email LIKE '$email'";
+                // $query = "SELECT id, first_name, last_name, password, email FROM users WHERE email LIKE '$email'";
+
+                $query = "
+                    SELECT u.id, u.first_name, u.last_name, u.password, u.email, GROUP_CONCAT(r.name SEPARATOR ', ') AS 'roles', GROUP_CONCAT((
+                        SELECT GROUP_CONCAT(p.name SEPARATOR ', ')
+                        FROM roles rr
+                        JOIN permission_groups rp ON rp.role_id = rr.id
+                        JOIN permissions p ON rp.permission_id = p.id
+                        WHERE rr.id = r.id
+                        GROUP BY rr.id
+                    ) SEPARATOR ', ') AS 'permissions'
+                    FROM users u
+                    LEFT JOIN role_groups ur ON ur.user_id = u.id
+                    LEFT JOIN roles r ON ur.role_id = r.id
+                    WHERE u.email = '$email'
+                    GROUP BY u.id
+                ";
+
                 $result = mysqli_query($this->conn,$query);
                 $user = mysqli_fetch_assoc($result);
 
@@ -68,9 +77,14 @@
 
                 // Encode the payload
                 $jwt = JWT::encode([
-                    "first_name" => $user["first_name"],
-                    "last_name" => $user["last_name"],
-                    "email" => $user["email"],
+                    "user" => [
+                        "id" => $user["id"],
+                        "first_name" => $user["first_name"],
+                        "last_name" => $user["last_name"],
+                        "email" => $user["email"],
+                        "roles" => $user["roles"],
+                        "permissions" => $user["permissions"],
+                    ]
                 ], $_ENV['JWT_SECRET_TOKEN_KEY'], 'HS256');
                 
                 return [
